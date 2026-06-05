@@ -1,0 +1,23 @@
+[Unit]
+Description=hub75pi — switchrr frame bridge for HUB75 display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u /home/pi/hub75pi/main.py
+Restart=always
+RestartSec=5
+User=pi
+StandardOutput=journal
+StandardError=journal
+
+Environment=HUB75PI_FRAME_BIND=tcp://0.0.0.0:5565
+Environment=HUB75PI_EVENTS_ADDR=tcp://10.0.3.55:5558
+Environment=HUB75PI_DISPLAY_ID=hub75
+Environment=HUB75PI_MODE_COUNT=5
+Environment=HUB75PI_HTTP_PORT=5580
+Environment=HUB75PI_SERIAL=/dev/ttyAMA0
+Environment=HUB75PI_BAUD=2000000
+
+[Install]
+WantedBy=multi-user.target
