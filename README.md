@@ -82,12 +82,29 @@ sends over UART with a magic-byte framing header.
 **Wire format sent to Interstate:**
 
 ```
-4 bytes  magic header  0xDE 0xAD 0xBE 0xEF
-4 bytes  length N      big-endian uint32
+4 bytes  magic header   0xDE 0xAD 0xBE 0xEF
+4 bytes  length N       big-endian uint32
+4 bytes  payload CRC32  big-endian uint32, of the raw (uncompressed) RGB888 frame
+4 bytes  header CRC32   big-endian uint32, CRC32 of the preceding length + payload CRC32 fields
 N bytes  zlib-compressed RGB888 frame (256×64×3 = 49,152 bytes raw)
 ```
 
 The magic header lets the Interstate resync cleanly after any framing error or reboot.
+
+Two layers of integrity checking on the Interstate:
+
+- **Header CRC32** is checked first. If it fails, `length` can't be trusted (reading that many
+  bytes would misread the stream and desync framing), so the frame is silently discarded and
+  the stream is resynced on the next magic header — no payload is read.
+- **Payload CRC32** is checked after decompression. A mismatch (or a decompression error, e.g.
+  from a UART bit-flip that still parses as a shorter/garbled DEFLATE stream) causes the frame
+  to be dropped — the previous good frame stays on screen and `main: CRC mismatch, dropping
+  frame` is printed — instead of rendering corrupted "noise" pixels.
+
+Both checks exist because a bit-flip in the *header* fields (length/payload-CRC) used to cause
+a misread of the byte stream, which made `deflate.DeflateIO` raise `EINVAL` — an unhandled
+exception in `main.py` that triggered a 1-second `time.sleep()`, visible as a periodic
+display freeze. The header CRC catches that case before any misread happens.
 
 **Dependencies** (installed on Pi Zero):
 

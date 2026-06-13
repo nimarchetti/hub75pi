@@ -138,8 +138,11 @@ while True:
         continue
     last_hash = h
 
+    crc = zlib.crc32(pixel_bytes) & 0xffffffff
     compressed = zlib.compress(pixel_bytes, 1)
-    ser.write(b'\xde\xad\xbe\xef' + struct.pack('>I', len(compressed)) + compressed)
+    pkt_header = struct.pack('>II', len(compressed), crc)
+    hcrc = zlib.crc32(pkt_header) & 0xffffffff
+    ser.write(b'\xde\xad\xbe\xef' + pkt_header + struct.pack('>I', hcrc) + compressed)
     ser.flush()
     sent += 1
     if sent % 30 == 0:
